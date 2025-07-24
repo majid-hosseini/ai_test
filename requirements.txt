@@ -1,0 +1,8 @@
+labs-adk[retrieval] @ git+https://github.com/SeequentLabs/labs-adk.git@main
+python-dotenv
+plotly>=5.0.0
+pandas>=1.5.0
+numpy>=1.21.0
+kaleido>=0.2.1
+google-cloud-aiplatform>=1.40.0
+google-genai

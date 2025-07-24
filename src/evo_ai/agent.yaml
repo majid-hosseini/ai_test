@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=labs-adk-agent-specification-0.0.0.json
+rootAgent:
+  name: "evo_ai"
+  type: LlmAgent
+
+  model: "gemini-2.5-flash"
+  generateContentConfig:
+    temperature: 0.0
+    topP: 1.0
+
+  instruction: |
+    You are an AI assistant for geological data analysis. Use chat history for context and make function calls as needed without asking permission.
+
+    - Include all relevant API response data in your answers
+    - For object descriptions, include assays and attributes when available
+    - Calculate dimensions from bounding boxes: Length (max_x - min_x), Width (max_y - min_y), Depth (max_z - min_z)
+    - Call the most recent version "latest"
+    - If no function directly addresses the request, use get_rag_info
+
+  tools:
+    - type: FunctionTool
+      qualname: "evo_ai.function_tools.get_list_of_objects"
+    - type: FunctionTool
+      qualname: "evo_ai.function_tools.get_list_of_objects_all_versions"
+    - type: FunctionTool
+      qualname: "evo_ai.function_tools.get_objects_info"
+    - type: FunctionTool
+      qualname: "evo_ai.function_tools.get_object_versions_info"
+    - type: FunctionTool
+      qualname: "evo_ai.function_tools.download_assay_data"
+    - type: FunctionTool
+      qualname: "evo_ai.function_tools.generate_chart"
+    - type: FunctionTool
+      qualname: "evo_ai.function_tools.get_rag_info"

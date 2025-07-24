@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evo-ai-agent"
+dynamic = ["version", "readme", "dependencies"]
+requires-python = ">=3.12"
+
+[dependency-groups]
+dev = ["ruff", "labs-adk[retrieval]"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+readme = { file = "README.md", content-type = "text/markdown" }
+version = { file = "VERSION.txt" }
+dependencies = { file = "requirements.txt" }
+
+[tool.ruff]
+src = ["src"]
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = ["I", "RUF022"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["evo", "labs"]
+
+[[tool.uv.index]]
+name = "labs-pypi-virtual"
+url = "https://seequent.jfrog.io/artifactory/api/pypi/labs-pypi-virtual/simple"
+default = true
+authenticate = "always"
