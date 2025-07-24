@@ -15,6 +15,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+import plotly.io as pio
 
 from .fake_data import FAKE_OBJECT_VERSIONS_INFO, FAKE_OBJECTS_ALL_VERSIONS, FAKE_OBJECTS_DATABASE, FAKE_OBJECTS_LIST
 from .code_execution_agent import execute_code
@@ -467,7 +468,7 @@ def generate_simple_chart(df: pd.DataFrame, user_prompt: str, attribute_name: st
     
     # Prepare the LLM prompt to generate complete chart creation code
     conditional_prompt = (
-        f"You are a helpful Python assistant that generates Plotly figures for geological data analysis.\n\n"
+        "You are a helpful Python assistant that generates Plotly figures for geological data analysis.\n\n"
         f"User prompt: '{user_prompt}'\n\n"
         f"The available DataFrame columns are: {list(df.columns)}\n"
         f"Primary attribute focus: '{attribute_name}'\n\n"
@@ -481,53 +482,18 @@ def generate_simple_chart(df: pd.DataFrame, user_prompt: str, attribute_name: st
         f"Columns: {list(df.columns)}\n\n"
         "TASK:\n"
         "Generate complete Python code that:\n"
-        "1. Creates a Plotly figure based on the user request\n"
-        "2. Saves the figure as both PNG and HTML files\n"
-        "3. Prints the file paths of saved charts\n"
-        "4. Prints a summary of the chart created\n\n"
+        "1. Creates a Plotly figure based on the user request.\n"
+        "2. At the end of the script, print the figure JSON using:\n"
+        "   `print('FIGURE_JSON:' + fig.to_json())`\n"
+        "3. Do not save any files locally.\n\n"
         "IMPORTANT GUIDELINES:\n"
-        "1. The DataFrame is already loaded as 'df' in the environment\n"
-        "2. All required libraries (pandas as pd, plotly.express as px, plotly.graph_objects as go, numpy as np) are available\n"
-        "3. When binning any column using `pd.cut(...)`, convert resulting intervals to strings using `.astype(str)`\n"
-        "4. Use `clip` for modifying values (not filtering) and retain all data in the plot\n"
-        "5. For geological data, consider using appropriate color scales (viridis, plasma, etc.)\n"
-        "6. Add meaningful titles and axis labels that include units when relevant\n"
-        "7. For histograms, use appropriate bin counts (10-30 bins typically work well)\n"
-        "8. Always verify the data has values before plotting - check df.shape and df.describe() if needed\n"
-        "9. Create the 'generated_charts' directory if it doesn't exist\n"
-        "10. Use timestamp in filenames to avoid conflicts\n\n"
-        "CHART TYPE SELECTION:\n"
-        "- Analyze the user prompt to determine the most appropriate chart type\n"
-        "- Choose the visualization that best represents the requested analysis\n"
-        "- Always include a descriptive title that mentions the geological context\n\n"
-        "EXAMPLE OUTPUT STRUCTURE:\n"
-        "```python\n"
-        "import os\n"
-        "from datetime import datetime\n"
-        "\n"
-        "# Create output directory\n"
-        "os.makedirs('generated_charts', exist_ok=True)\n"
-        "\n"
-        "# Generate timestamp for unique filenames\n"
-        "timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')\n"
-        "\n"
-        "# Create the chart (example for histogram)\n"
-        "fig = px.histogram(df, x='column_name', nbins=20, title='Your Chart Title')\n"
-        "fig.update_layout(xaxis_title='X Label (units)', yaxis_title='Y Label')\n"
-        "\n"
-        "# Save as PNG and HTML\n"
-        "png_file = f'generated_charts/chart_{timestamp}.png'\n"
-        "html_file = f'generated_charts/chart_{timestamp}.html'\n"
-        "\n"
-        "fig.write_image(png_file, width=800, height=600)\n"
-        "fig.write_html(html_file)\n"
-        "\n"
-        "print(f'Chart saved as PNG: {png_file}')\n"
-        "print(f'Chart saved as HTML: {html_file}')\n"
-        "print(f'Chart type: histogram')\n"
-        "print(f'Data points: {len(df)}')\n"
-        "```\n\n"
-        "Generate the complete code without any markdown formatting - just the Python code."
+        "- The DataFrame is already loaded as `df`.\n"
+        "- Available libraries: pandas as pd, plotly.express as px, plotly.graph_objects as go, numpy as np.\n"
+        "- When binning with `pd.cut`, convert intervals to strings with `.astype(str)`.\n"
+        "- Use `clip` for modifying values, not filtering.\n"
+        "- Add meaningful titles and axis labels with units when relevant.\n"
+        "- Use appropriate color scales for geological data.\n\n"
+        "Generate only the Python code without Markdown formatting."
     )
 
     # Get LLM-generated code
@@ -568,42 +534,26 @@ def generate_simple_chart(df: pd.DataFrame, user_prompt: str, attribute_name: st
     logger.info("Code executed successfully via secure code execution")
     logger.info(f"Execution output: {result['output']}")
 
-    # Parse the output to find saved file paths
+    # Parse the output to find the figure JSON
     output_lines = result["output"].split("\n")
-    png_file = None
-    html_file = None
+    fig_json = None
 
     for line in output_lines:
-        if "Chart saved as PNG:" in line:
-            png_file = line.split("Chart saved as PNG:")[-1].strip()
-        elif "Chart saved as HTML:" in line:
-            html_file = line.split("Chart saved as HTML:")[-1].strip()
+        if line.startswith("FIGURE_JSON:"):
+            fig_json = line.replace("FIGURE_JSON:", "", 1).strip()
+            break
 
-    fig = go.Figure()
-    annotation_text = "Chart generated via VertexAI code execution!<br>"
-    if html_file:
-        annotation_text += f"<a href='{html_file}'>View Interactive Chart</a><br>"
-    if png_file:
-        annotation_text += f"PNG file: {png_file}<br>"
-    annotation_text += f"Data points: {len(cleaned_df)}"
+    if not fig_json:
+        raise RuntimeError("Figure JSON not found in execution output")
 
-    fig.add_annotation(
-        text=annotation_text,
-        xref="paper",
-        yref="paper",
-        x=0.5,
-        y=0.5,
-        showarrow=False,
-        font=dict(size=14, color="green"),
-    )
-    fig.update_layout(
-        title="Chart Generation Successful",
-        xaxis=dict(showgrid=False, showticklabels=False),
-        yaxis=dict(showgrid=False, showticklabels=False),
-        width=800,
-        height=600,
-    )
-    logger.info(f"Chart files created: PNG={png_file}, HTML={html_file}")
+    try:
+        fig = pio.from_json(fig_json)
+    except Exception as e:
+        logger.error(f"Failed to parse figure JSON: {e}")
+        raise RuntimeError(f"Failed to parse figure JSON: {e}")
+
+    logger.info("Chart generated successfully via VertexAI code execution")
+    logger.info(f"Data points used: {len(cleaned_df)}")
     return fig
 
 
