@@ -549,80 +549,62 @@ def generate_simple_chart(df: pd.DataFrame, user_prompt: str, attribute_name: st
     logger.info("LLM Generated code for chart generation:")
     logger.info(llm_code)
 
-    try:
-        # Clean the dataframe first
-        cleaned_df = clean_dataframe_for_analysis(df)
-        if cleaned_df.empty:
-            return create_error_figure("No valid data available after cleaning")
-        
-        logger.info(f"Cleaned DataFrame info: shape={cleaned_df.shape}, columns={list(cleaned_df.columns)}")
-        
-        # Use the secure execute_code_with_dataframe function
-        result = execute_code_with_dataframe(llm_code, cleaned_df)
-        
-        if result['success']:
-            logger.info("Code executed successfully via secure code execution")
-            logger.info(f"Execution output: {result['output']}")
-            
-            # Parse the output to find saved file paths
-            output_lines = result['output'].split('\n')
-            png_file = None
-            html_file = None
-            
-            for line in output_lines:
-                if 'Chart saved as PNG:' in line:
-                    png_file = line.split('Chart saved as PNG:')[-1].strip()
-                elif 'Chart saved as HTML:' in line:
-                    html_file = line.split('Chart saved as HTML:')[-1].strip()
-            
-            # Try to load the HTML file and extract the figure
-            if html_file and os.path.exists(html_file):
-                try:
-                    # Read the HTML file and create a simple figure with a link
-                    fig = go.Figure()
-                    fig.add_annotation(
-                        text=f"Chart successfully generated!<br>"
-                             f"<a href='{html_file}'>View Interactive Chart</a><br>"
-                             f"PNG file: {png_file if png_file else 'Not available'}<br>"
-                             f"Data points: {len(cleaned_df)}",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False,
-                        font=dict(size=14, color="green")
-                    )
-                    fig.update_layout(
-                        title="Chart Generation Successful",
-                        xaxis=dict(showgrid=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, showticklabels=False),
-                        width=800, height=600
-                    )
-                    logger.info(f"Chart files created: PNG={png_file}, HTML={html_file}")
-                    return fig
-                except Exception as load_error:
-                    logger.warning(f"Could not load generated chart file: {load_error}")
-            
-            # If we can't load the chart file, return a success message with output
-            fig = go.Figure()
-            fig.add_annotation(
-                text=f"Chart code executed successfully!<br>"
-                     f"Output: {result['output'][:200]}...<br>"
-                     f"Files may have been created in generated_charts/",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, showarrow=False,
-                font=dict(size=12, color="blue")
-            )
-            fig.update_layout(
-                title="Chart Generation - Code Executed",
-                width=800, height=600
-            )
-            return fig
-            
-        else:
-            logger.error(f"Secure code execution failed: {result['error']}")
-            return create_error_figure(f"Chart generation failed: {result['error']}")
+    # Clean the dataframe first
+    cleaned_df = clean_dataframe_for_analysis(df)
+    if cleaned_df.empty:
+        raise RuntimeError("No valid data available after cleaning")
 
-    except Exception as e:
-        logger.error(f"Error in secure chart generation: {e}")
-        return create_error_figure(f"Failed to generate chart: {str(e)}")
+    logger.info(
+        f"Cleaned DataFrame info: shape={cleaned_df.shape}, columns={list(cleaned_df.columns)}"
+    )
+
+    # Use the secure execute_code_with_dataframe function
+    result = execute_code_with_dataframe(llm_code, cleaned_df)
+
+    if not result["success"]:
+        logger.error(f"Secure code execution failed: {result['error']}")
+        raise RuntimeError(f"Chart generation failed: {result['error']}")
+
+    logger.info("Code executed successfully via secure code execution")
+    logger.info(f"Execution output: {result['output']}")
+
+    # Parse the output to find saved file paths
+    output_lines = result["output"].split("\n")
+    png_file = None
+    html_file = None
+
+    for line in output_lines:
+        if "Chart saved as PNG:" in line:
+            png_file = line.split("Chart saved as PNG:")[-1].strip()
+        elif "Chart saved as HTML:" in line:
+            html_file = line.split("Chart saved as HTML:")[-1].strip()
+
+    fig = go.Figure()
+    annotation_text = "Chart generated via VertexAI code execution!<br>"
+    if html_file:
+        annotation_text += f"<a href='{html_file}'>View Interactive Chart</a><br>"
+    if png_file:
+        annotation_text += f"PNG file: {png_file}<br>"
+    annotation_text += f"Data points: {len(cleaned_df)}"
+
+    fig.add_annotation(
+        text=annotation_text,
+        xref="paper",
+        yref="paper",
+        x=0.5,
+        y=0.5,
+        showarrow=False,
+        font=dict(size=14, color="green"),
+    )
+    fig.update_layout(
+        title="Chart Generation Successful",
+        xaxis=dict(showgrid=False, showticklabels=False),
+        yaxis=dict(showgrid=False, showticklabels=False),
+        width=800,
+        height=600,
+    )
+    logger.info(f"Chart files created: PNG={png_file}, HTML={html_file}")
+    return fig
 
 
 

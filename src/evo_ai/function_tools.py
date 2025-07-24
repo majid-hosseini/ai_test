@@ -98,8 +98,6 @@ def generate_chart(user_prompt: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: A dictionary containing chart details and file paths (JSON-serializable).
     """
-    from .fake_data import FAKE_TABLE_DATA
-    
     logger.info(f"Generating chart for user prompt: {user_prompt}")
     
     try:
@@ -112,9 +110,9 @@ def generate_chart(user_prompt: str) -> Dict[str, Any]:
         logger.info(f"Created dataframe with shape: {df.shape}")
         logger.info(f"Dataframe columns: {list(df.columns)}")
         
-        # Generate the chart using simplified logic
+        # Generate the chart using secure VertexAI code execution
         plotly_figure = generate_simple_chart(df, user_prompt, attribute_name)
-        
+
         # Save the chart file (PNG only)
         png_filename = save_chart_file(plotly_figure, user_prompt)
         
